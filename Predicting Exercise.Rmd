@@ -1,0 +1,86 @@
+---
+title: "Week 4 ML Coursera"
+author: "Kevin Clancy"
+date: "October 22, 2018"
+output: html_document
+---
+
+#Predicting the Different Classes of Proper Exercise Technqiues
+
+
+##Executive Summary
+In this analysis, we are trying to predict what type of exercise was being performed (exercise were different versions of a bicep curl). We ended up using a random forest model that had over 99% accuracy.
+
+##Loading the Weight Lifting Exercise Dataset
+```{r}
+url1 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+
+url2 <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+  
+download.file(url1, destfile = "./pmltraining.csv")
+download.file(url2, destfile = "./pmltesting.csv")
+
+
+pmltrain <- read.csv("pmltraining.csv", na.strings = c("NA", "#DIV/0!", ""))
+pmltest <- read.csv("pmltesting.csv", na.strings = c("NA", "#DIV/0!", ""))
+
+```
+
+##Data Preparation
+Remove data that contains more than 95% of the observation to be NA.
+```{r}
+colclean <- colSums(is.na(pmltrain))/nrow(pmltrain) < .95
+clean_train <- pmltrain[,colclean]
+clean_test <- pmltest[,colclean]
+
+#checking the NA's removed
+#colSums(is.na(clean_train))/nrow(clean_train)
+
+#remove col1 to col7 because data not useful
+newcleantrain <- clean_train[,-c(1:7)]
+newcleantest <- clean_test[,-c(1:7,60)]
+
+
+dim(pmltrain) ; dim(pmltest)
+```
+
+##Partition the Data
+```{r}
+library(caret)
+inTrain <- createDataPartition(newcleantrain$classe, p = .7, list = FALSE)
+
+training <- newcleantrain[inTrain,]
+testing <- newcleantrain[-inTrain,]
+
+```
+
+
+Predict using random forest, boosted trees, lda
+```{r}
+#Predicting using decision tree
+dectree <- train(classe ~ ., method = "rpart", data = training)
+
+rffit <- train(classe ~ ., data = training, method = "rf", ntree = 20)
+
+
+decpred <- predict(dectree, newdata = testing)
+rfpred <- predict(rffit, newdata = testing)
+
+
+#Seeing how well data does with testing dataset
+confusionMatrix(rfpred, testing$classe)
+confusionMatrix(decpred, testing$classe)
+
+```
+
+Predict the 20 obs test set
+
+```{r}
+overallpred <- predict(rffit, newdata = newcleantest)
+overallpred
+
+```
+
+Conclusion
+The major issue I ran into was computing power. I would have liked to run the randomforest with more than 20 trees, but it would have taken too long. The random forest is a preferred algorithm to use because of how well it is at predicting although it loses interpretability. The decision tree model was not as accurate as I would have liked.
+
